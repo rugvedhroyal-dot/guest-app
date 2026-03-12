@@ -1,25 +1,22 @@
 // src/components/Chat.js
-// AI Chat component — handles message sending, crisis detection, and Firebase persistence
-// Displays chat bubbles, typing indicator, and crisis alert banner
-
 import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "../App";
 import { getAIResponse, detectCrisis, getCrisisResponse } from "../openai";
 import { saveChatMessage, loadChatHistory, logEmergencyTrigger } from "../firebase";
 import EmergencyContact from "./EmergencyContact";
 
-export default function Chat() {
+export default function Chat({ starterText, onStarterUsed }) {
   const { sessionId } = useSession();
-  const [messages, setMessages]     = useState([]);
-  const [input, setInput]           = useState("");
-  const [loading, setLoading]       = useState(false);
-  const [crisis, setCrisis]         = useState(false);
-  const [showContact, setShowContact] = useState(false);
+  const [messages, setMessages]         = useState([]);
+  const [input, setInput]               = useState("");
+  const [loading, setLoading]           = useState(false);
+  const [crisis, setCrisis]             = useState(false);
+  const [showContact, setShowContact]   = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
 
-  // ── Load existing chat history on mount ────────────────────────────────────
+  // Load chat history
   useEffect(() => {
     if (!sessionId) return;
     loadChatHistory(sessionId)
@@ -27,29 +24,30 @@ export default function Chat() {
         if (history.length > 0) {
           setMessages(history.map((h) => ({ role: h.role, content: h.content })));
         } else {
-          // Welcome message for new users
-          setMessages([{
-            role: "assistant",
-            content: "Hi, I'm glad you're here. 💙 This is a safe, judgment-free space. You can talk to me about anything — how you're feeling, what's on your mind, or just to be heard. What's going on today?",
-          }]);
+          setMessages([{ role: "assistant", content: "Hi, I'm glad you're here. 💙 This is a safe, judgment-free space. You can talk to me about anything — how you're feeling, what's on your mind, or just to be heard. What's going on today?" }]);
         }
         setHistoryLoaded(true);
       })
       .catch(() => {
-        setMessages([{
-          role: "assistant",
-          content: "Hi, I'm glad you're here. 💙 What's on your mind today?",
-        }]);
+        setMessages([{ role: "assistant", content: "Hi, I'm glad you're here. 💙 What's on your mind today?" }]);
         setHistoryLoaded(true);
       });
   }, [sessionId]);
 
-  // ── Auto-scroll to latest message ─────────────────────────────────────────
+  // Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // ── Send message handler ───────────────────────────────────────────────────
+  // Fill input when starter is clicked
+  useEffect(() => {
+    if (starterText) {
+      setInput(starterText);
+      onStarterUsed?.();
+      inputRef.current?.focus();
+    }
+  }, [starterText]);
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -60,47 +58,28 @@ export default function Chat() {
     setInput("");
     setLoading(true);
 
-    // Save user message to Firebase
-    if (sessionId) {
-      saveChatMessage(sessionId, "user", text).catch(console.error);
-    }
+    if (sessionId) saveChatMessage(sessionId, "user", text).catch(console.error);
 
-    // ── Crisis Detection ───────────────────────────────────────────────────
     if (detectCrisis(text)) {
       setCrisis(true);
       const crisisReply = getCrisisResponse();
-      const aiMsg = { role: "assistant", content: crisisReply };
-      setMessages([...updatedMessages, aiMsg]);
+      setMessages([...updatedMessages, { role: "assistant", content: crisisReply }]);
       setLoading(false);
-
-      // Log the trigger and prompt emergency contact
       if (sessionId) {
         logEmergencyTrigger(sessionId, text).catch(console.error);
         saveChatMessage(sessionId, "assistant", crisisReply).catch(console.error);
       }
-
-      // Show emergency contact prompt after a short delay
       setTimeout(() => setShowContact(true), 1500);
       return;
     }
 
-    // ── Normal AI Response ─────────────────────────────────────────────────
     try {
-      const conversationHistory = updatedMessages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-      const reply = await getAIResponse(conversationHistory);
+      const reply = await getAIResponse(updatedMessages.map((m) => ({ role: m.role, content: m.content })));
       const aiMsg = { role: "assistant", content: reply };
       setMessages([...updatedMessages, aiMsg]);
-
-      if (sessionId) {
-        saveChatMessage(sessionId, "assistant", reply).catch(console.error);
-      }
+      if (sessionId) saveChatMessage(sessionId, "assistant", reply).catch(console.error);
     } catch (error) {
-      console.error("Chat error:", error);
-      const errMsg = { role: "assistant", content: "I'm having a moment connecting. You're still not alone — try sending again, or call 988." };
-      setMessages([...updatedMessages, errMsg]);
+      setMessages([...updatedMessages, { role: "assistant", content: "I'm having a moment connecting. You're still not alone — try sending again, or call 988." }]);
     } finally {
       setLoading(false);
       inputRef.current?.focus();
@@ -108,75 +87,50 @@ export default function Chat() {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full max-w-2xl mx-auto">
-      {/* Crisis Banner */}
       {crisis && (
         <div className="crisis-banner mb-4 animate-fade-in">
           <p className="font-semibold text-red-700 mb-1">⚠️ You're not alone in this.</p>
           <p className="text-sm">
-            Please reach out to the{" "}
-            <a href="tel:988" className="font-bold underline">988 Suicide & Crisis Lifeline</a>{" "}
-            (call or text <strong>988</strong>) or text{" "}
-            <strong>HOME to 741741</strong> for the Crisis Text Line. You matter.
+            Please reach out to the <a href="tel:988" className="font-bold underline">988 Suicide & Crisis Lifeline</a>{" "}
+            (call or text <strong>988</strong>) or text <strong>HOME to 741741</strong>. You matter.
           </p>
         </div>
       )}
 
-      {/* Emergency Contact Modal */}
       {showContact && (
         <div className="mb-4">
           <EmergencyContact onClose={() => setShowContact(false)} />
         </div>
       )}
 
-      {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pb-2 px-1" style={{ maxHeight: "calc(100vh - 320px)", minHeight: "300px" }}>
         {!historyLoaded ? (
           <div className="flex justify-center pt-8">
-            <div className="w-8 h-8 border-3 border-calm-200 border-t-calm-500 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-calm-200 border-t-calm-500 rounded-full animate-spin" />
           </div>
         ) : (
           messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
-            >
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}>
               {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full bg-sage-100 flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">
-                  🌿
-                </div>
+                <div className="w-8 h-8 rounded-full bg-sage-100 flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">🌿</div>
               )}
-              <div
-                className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"}
-                style={{ whiteSpace: "pre-wrap", lineHeight: "1.5" }}
-              >
-                {/* Render bold markdown manually */}
+              <div className={msg.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"} style={{ whiteSpace: "pre-wrap", lineHeight: "1.5" }}>
                 {msg.content.split(/(\*\*[^*]+\*\*)/).map((part, j) =>
-                  part.startsWith("**") ? (
-                    <strong key={j}>{part.slice(2, -2)}</strong>
-                  ) : (
-                    part
-                  )
+                  part.startsWith("**") ? <strong key={j}>{part.slice(2, -2)}</strong> : part
                 )}
               </div>
             </div>
           ))
         )}
 
-        {/* Typing indicator */}
         {loading && (
           <div className="flex justify-start animate-fade-in">
-            <div className="w-8 h-8 rounded-full bg-sage-100 flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">
-              🌿
-            </div>
+            <div className="w-8 h-8 rounded-full bg-sage-100 flex items-center justify-center text-sm mr-2 flex-shrink-0 mt-1">🌿</div>
             <div className="chat-bubble-ai flex items-center gap-1 py-3">
               <span className="w-2 h-2 bg-calm-300 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
               <span className="w-2 h-2 bg-calm-300 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
@@ -187,7 +141,6 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input Area */}
       <div className="mt-3 flex gap-2 items-end">
         <textarea
           ref={inputRef}
@@ -203,7 +156,6 @@ export default function Chat() {
           onClick={handleSend}
           disabled={!input.trim() || loading}
           className="btn-primary px-5 py-3 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-          aria-label="Send message"
         >
           {loading ? (
             <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -218,7 +170,6 @@ export default function Chat() {
         </button>
       </div>
 
-      {/* Anonymous mode notice */}
       <p className="text-xs text-warm-400 text-center mt-2">
         🔒 Anonymous mode — no login required. Your conversation is private to your session.
       </p>
