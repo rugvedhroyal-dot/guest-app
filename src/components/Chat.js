@@ -39,12 +39,14 @@ export default function Chat({ starterText, onStarterUsed }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Fill input when starter is clicked
+// Fill input when starter is clicked
   useEffect(() => {
-    if (starterText) {
+    if (starterText && starterText.length > 0) {
       setInput(starterText);
-      onStarterUsed?.();
-      inputRef.current?.focus();
+      setTimeout(() => {
+        if (onStarterUsed) onStarterUsed();
+        inputRef.current?.focus();
+      }, 200);
     }
   }, [starterText]);
 
