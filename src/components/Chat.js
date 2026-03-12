@@ -39,16 +39,15 @@ export default function Chat({ starterText, onStarterUsed }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-// Fill input when starter is clicked
+// Listen for starter prompt events
   useEffect(() => {
-    if (starterText && starterText.length > 0) {
-      setInput(starterText);
-      setTimeout(() => {
-        if (onStarterUsed) onStarterUsed();
-        inputRef.current?.focus();
-      }, 200);
-    }
-  }, [starterText]);
+    const handler = (e) => {
+      setInput(e.detail);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    };
+    window.addEventListener("guestStarter", handler);
+    return () => window.removeEventListener("guestStarter", handler);
+  }, []);
 
   const handleSend = async () => {
     const text = input.trim();
