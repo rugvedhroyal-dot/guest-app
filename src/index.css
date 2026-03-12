@@ -1,0 +1,103 @@
+/* src/index.css */
+/* Global styles — Tailwind base + custom overrides for the Guest app */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Typography ─────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Lora', Georgia, serif;
+  }
+
+  body {
+    @apply bg-calm-50 text-warm-800;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+/* ─── Reusable Component Styles ──────────────────────────────────────────── */
+@layer components {
+  /* Primary button — calm blue */
+  .btn-primary {
+    @apply bg-calm-500 hover:bg-calm-600 text-white font-medium px-6 py-3 rounded-2xl
+           transition-all duration-200 shadow-soft hover:shadow-glow active:scale-95
+           focus:outline-none focus:ring-2 focus:ring-calm-300 focus:ring-offset-2;
+  }
+
+  /* Secondary button — sage green */
+  .btn-secondary {
+    @apply bg-sage-500 hover:bg-sage-600 text-white font-medium px-6 py-3 rounded-2xl
+           transition-all duration-200 shadow-soft active:scale-95
+           focus:outline-none focus:ring-2 focus:ring-sage-300 focus:ring-offset-2;
+  }
+
+  /* Ghost button — outlined */
+  .btn-ghost {
+    @apply border-2 border-calm-300 text-calm-600 hover:bg-calm-100 font-medium px-6 py-3
+           rounded-2xl transition-all duration-200 active:scale-95
+           focus:outline-none focus:ring-2 focus:ring-calm-200 focus:ring-offset-2;
+  }
+
+  /* Card container */
+  .card {
+    @apply bg-white rounded-3xl shadow-card p-6 border border-calm-100;
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full border border-calm-200 rounded-xl px-4 py-3 text-warm-800
+           focus:outline-none focus:ring-2 focus:ring-calm-300 focus:border-calm-400
+           bg-white placeholder-warm-400 transition-all duration-200;
+  }
+
+  /* Section heading */
+  .section-title {
+    @apply font-display text-2xl font-semibold text-warm-800 mb-2;
+  }
+
+  /* Emergency / crisis alert box */
+  .crisis-banner {
+    @apply bg-red-50 border-l-4 border-red-400 rounded-xl p-4 text-red-800;
+  }
+}
+
+/* ─── Scrollbar Styling ──────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f0f7ff;
+}
+::-webkit-scrollbar-thumb {
+  background: #b9dcff;
+  border-radius: 3px;
+}
+
+/* ─── Chat Bubble Styles ─────────────────────────────────────────────────── */
+.chat-bubble-user {
+  @apply bg-calm-500 text-white rounded-3xl rounded-br-md px-4 py-3 max-w-xs ml-auto shadow-soft;
+}
+.chat-bubble-ai {
+  @apply bg-white border border-calm-100 text-warm-800 rounded-3xl rounded-bl-md px-4 py-3 max-w-xs shadow-soft;
+}
+
+/* ─── Mood Emoji Scale ───────────────────────────────────────────────────── */
+.mood-btn {
+  @apply text-3xl cursor-pointer transition-transform duration-150 hover:scale-125
+         focus:outline-none focus:ring-2 focus:ring-calm-300 rounded-full p-1;
+}
+.mood-btn.selected {
+  @apply scale-125 ring-2 ring-calm-400 bg-calm-50 rounded-full;
+}
