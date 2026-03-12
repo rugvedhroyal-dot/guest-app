@@ -1,7 +1,4 @@
 // src/App.js
-// Root application component — sets up routing, anonymous auth, visitor tracking,
-// and session management. Wraps the whole app in a shared SessionContext.
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { signInAnon, onAuthStateChanged, incrementVisitor } from "./firebase";
@@ -12,13 +9,9 @@ import ChatPage from "./pages/ChatPage";
 import Resources from "./pages/Resources";
 import AdminDashboard from "./pages/AdminDashboard";
 
-// ─── Session Context ──────────────────────────────────────────────────────────
-// Provides sessionId and user info to all child components
 export const SessionContext = createContext(null);
 export const useSession = () => useContext(SessionContext);
 
-// ─── Admin Password ───────────────────────────────────────────────────────────
-// Simple client-side admin guard — set your own password in .env as REACT_APP_ADMIN_PASSWORD
 const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || "guest-admin-2024";
 
 function AdminGuard({ children }) {
@@ -57,36 +50,35 @@ function AdminGuard({ children }) {
   );
 }
 
-// ─── App Component ────────────────────────────────────────────────────────────
 function App() {
   const [sessionId, setSessionId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  // Subscribe to Firebase auth state — sign in anonymously if no user
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    if (user) {
-      // Use Firebase UID as session identifier
-      setSessionId(user.uid);
-      setLoading(false);
-    } else {
-      signInAnon().then((user) => {
-        if (user) {
-          setSessionId(user.uid);
-        } else {
-          // Fallback: random session ID if Firebase auth fails
-          setSessionId("anon_" + Math.random().toString(36).substr(2, 12));
-        }
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setSessionId(user.uid);
         setLoading(false);
-      });
+      } else {
+        signInAnon().then((u) => {
+          if (u) {
+            setSessionId(u.uid);
+          } else {
+            setSessionId("anon_" + Math.random().toString(36).substr(2, 12));
+          }
+          setLoading(false);
+        });
+      }
+    });
+
+    // Only count as a visit once per browser session — not every refresh
+    if (!sessionStorage.getItem("visited")) {
+      sessionStorage.setItem("visited", "true");
+      incrementVisitor();
     }
-  });
 
-  // Track this visit
-  incrementVisitor();
-
-  return () => unsubscribe();
-}, []);
+    return () => unsubscribe();
+  }, []);
 
   if (loading) {
     return (
@@ -106,11 +98,11 @@ useEffect(() => {
           <Navbar />
           <main className="flex-1">
             <Routes>
-              <Route path="/"         element={<Home />} />
-              <Route path="/chat"     element={<ChatPage />} />
+              <Route path="/"          element={<Home />} />
+              <Route path="/chat"      element={<ChatPage />} />
               <Route path="/resources" element={<Resources />} />
-              <Route path="/admin"    element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-              <Route path="*"         element={<Navigate to="/" replace />} />
+              <Route path="/admin"     element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+              <Route path="*"          element={<Navigate to="/" replace />} />
             </Routes>
           </main>
           <Footer />
@@ -120,18 +112,13 @@ useEffect(() => {
   );
 }
 
-// Fix: import auth separately
-
-// ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
     <footer className="bg-white border-t border-calm-100 py-6 mt-8">
       <div className="max-w-4xl mx-auto px-4 text-center">
         <p className="text-warm-400 text-sm font-body">
           🌿 Guest — a safe space for everyone.{" "}
-          <span className="text-calm-500 font-medium">
-            Crisis? Call or text 988.
-          </span>{" "}
+          <span className="text-calm-500 font-medium">Crisis? Call or text 988.</span>{" "}
           Text HOME to 741741 for Crisis Text Line.
         </p>
         <p className="text-warm-300 text-xs mt-1">
